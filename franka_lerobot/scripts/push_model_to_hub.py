@@ -228,14 +228,17 @@ Exact command line: `franka_lerobot/scripts/train_act.sh` in the code repo; the 
 ## Usage
 
 ```python
+from lerobot.configs.policies import PreTrainedConfig
 from lerobot.policies.act.modeling_act import ACTPolicy
 from lerobot.policies.factory import make_pre_post_processors
 
-repo = "{a.repo_id}"
-policy = ACTPolicy.from_pretrained(repo).to("cuda").eval()          # or "cpu"
+repo, device = "{a.repo_id}", "cuda"                               # or "cpu"
+cfg = PreTrainedConfig.from_pretrained(repo)
+cfg.device = device                                                  # the stored config says "cuda"
+policy = ACTPolicy.from_pretrained(repo, config=cfg).eval()
 pre, post = make_pre_post_processors(policy.config, pretrained_path=repo,
-    preprocessor_overrides={{"device_processor": {{"device": "cuda"}}}},
-    postprocessor_overrides={{"device_processor": {{"device": "cuda"}}}})
+    preprocessor_overrides={{"device_processor": {{"device": device}}}},
+    postprocessor_overrides={{"device_processor": {{"device": device}}}})
 # obs: {{"observation.state": (8,), "observation.ee_pose": (7,), "observation.images.wrist"/"base": (3,480,640) float in [0,1]}}
 # chunk = post(policy.predict_action_chunk(pre(obs)))  -> ({pol['chunk_size']}, 8) unnormalised actions
 ```

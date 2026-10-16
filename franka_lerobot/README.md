@@ -217,10 +217,25 @@ The optimizer state is never uploaded. `--dry-run --out-card card.md` previews t
 Load it back:
 
 ```python
+from lerobot.configs.policies import PreTrainedConfig
 from lerobot.policies.act.modeling_act import ACTPolicy
 from lerobot.policies.factory import make_pre_post_processors
-policy = ACTPolicy.from_pretrained("Lusmse/act_franka_cubes_c100").eval()
-pre, post = make_pre_post_processors(policy.config, pretrained_path="Lusmse/act_franka_cubes_c100")
+
+repo, device = "Lusmse/act_franka_cubes_c100", "cpu"                 # or "cuda"
+cfg = PreTrainedConfig.from_pretrained(repo)
+cfg.device = device                                                    # the stored config says "cuda"
+policy = ACTPolicy.from_pretrained(repo, config=cfg).eval()
+ov = {"device_processor": {"device": device}}
+pre, post = make_pre_post_processors(policy.config, pretrained_path=repo,
+                                     preprocessor_overrides=ov, postprocessor_overrides=ov)
+# chunk = post(policy.predict_action_chunk(pre(obs)))   # (1, 100, 8)
+```
+
+Checked on 2026-10-16 on CPU with a fresh cache: the Hub weights equal the local `last` checkpoint tensor for
+tensor (234 tensors), and Hub and local checkpoints give the same 100x8 chunk for a test observation
+(max difference 0.0).
+
+```text
 ```
 
 ## 6. Deploying on the robot
