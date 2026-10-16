@@ -10,7 +10,6 @@ teleop converter's ~100 extra features (49 of 70 s converting a 60 s
 episode). Skipping it when no feature requires storage embedding gives
 identical parquet and video output (verified byte-for-byte) in 19.6 s.
 
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  src/lerobot/datasets/utils.py | 6 ++++++
  1 file changed, 6 insertions(+)
