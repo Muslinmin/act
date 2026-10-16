@@ -235,9 +235,6 @@ Checked on 2026-10-16 on CPU with a fresh cache: the Hub weights equal the local
 tensor (234 tensors), and Hub and local checkpoints give the same 100x8 chunk for a test observation
 (max difference 0.0).
 
-```text
-```
-
 ## 6. Deploying on the robot
 
 Deployment is in JELLO_ARM_FRANKA (branch `il-recording`), `docs/IL_DATA_PIPELINE.md` section 7. In short:
