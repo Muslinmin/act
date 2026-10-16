@@ -1,0 +1,107 @@
+# Exact package set of the conda env `franka_il` that trained act_cubes_c100 (Python 3.11, CUDA 12.8 wheels),
+# restricted to what LeRobot ACT training / eval / dataset conversion / the ZMQ policy server import:
+# the dependency closure of lerobot 0.4.1 + diffusers + pyzmq + rerun-sdk + tyro, versions from
+# `conda run -n franka_il pip freeze` on 2026-10-16 (full freeze: pip-freeze-franka_il-2026-10-16.txt).
+#
+# Install WITHOUT dependency resolution (the env deliberately violates some declared ranges that are harmless:
+# numpy 1.26 under rerun-sdk's numpy>=2, wandb 0.28 above lerobot's <0.22; torchcodec, pynput, cmake and
+# hf-transfer are not installed, lerobot falls back to pyav for video decoding):
+#   pip install --no-deps -r requirements-franka_il.txt --extra-index-url https://download.pytorch.org/whl/cu128
+# then lerobot itself (setup_env.sh does both):
+#   lerobot @ git+https://github.com/huggingface/lerobot.git@a5b29d43 (+ optional patches/0001-*.patch)
+accelerate==1.14.0
+aiohappyeyeballs==2.4.4
+aiohttp==3.11.11
+aiosignal==1.3.2
+annotated-types==0.7.0
+attrs==25.1.0
+av==15.1.0
+certifi==2026.6.17
+charset-normalizer==3.3.2
+click==8.4.2
+cloudpickle==3.1.2
+datasets==4.1.1
+deepdiff==8.6.2
+diffusers==0.35.2
+dill==0.4.0
+docstring_parser==0.18.0
+draccus==0.10.0
+einops==0.8.2
+Farama-Notifications==0.0.6
+filelock==3.13.1
+frozenlist==1.5.0
+fsspec==2024.6.1
+gitdb==4.0.12
+GitPython==3.1.51
+gymnasium==1.2.1
+hf-xet==1.6.0
+huggingface-hub==0.35.3
+idna==3.10
+imageio==2.37.0
+imageio-ffmpeg==0.6.0
+importlib_metadata==9.0.0
+Jinja2==3.1.6
+jsonlines==4.0.0
+MarkupSafe==2.1.3
+mergedeep==1.3.4
+mpmath==1.3.0
+multidict==6.1.0
+multiprocess==0.70.16
+mypy_extensions==1.1.0
+networkx==3.3
+numpy==1.26.0
+nvidia-cublas-cu12==12.8.3.14
+nvidia-cuda-cupti-cu12==12.8.57
+nvidia-cuda-nvrtc-cu12==12.8.61
+nvidia-cuda-runtime-cu12==12.8.57
+nvidia-cudnn-cu12==9.7.1.26
+nvidia-cufft-cu12==11.3.3.41
+nvidia-cufile-cu12==1.13.0.11
+nvidia-curand-cu12==10.3.9.55
+nvidia-cusolver-cu12==11.7.2.55
+nvidia-cusparse-cu12==12.5.7.53
+nvidia-cusparselt-cu12==0.6.3
+nvidia-nccl-cu12==2.26.2
+nvidia-nvjitlink-cu12==12.8.61
+nvidia-nvtx-cu12==12.8.55
+opencv-python-headless==4.11.0.86
+orderly-set==5.5.0
+packaging==25.0
+pandas==3.0.3
+pillow==11.3.0
+platformdirs==4.10.0
+propcache==0.2.1
+protobuf==7.35.1
+psutil==5.9.8
+pyarrow==25.0.0
+pydantic==2.11.10
+pydantic_core==2.33.2
+pyserial==3.5
+python-dateutil==2.9.0.post0
+PyYAML==6.0.2
+pyyaml-include==1.4.1
+pyzmq==27.2.0
+regex==2026.7.10
+requests==2.32.3
+rerun-sdk==0.26.2
+safetensors==0.8.0
+sentry-sdk==2.29.1
+six==1.17.0
+smmap==5.0.3
+sympy==1.13.3
+termcolor==3.3.0
+toml==0.10.2
+torch==2.7.0+cu128
+torchvision==0.22.0+cu128
+tqdm==4.68.4
+triton==3.3.0
+typeguard==4.6.0
+typing_extensions==4.16.0
+typing-inspect==0.9.0
+typing-inspection==0.4.2
+tyro==1.0.16
+urllib3==2.7.0
+wandb==0.28.0
+xxhash==3.8.1
+yarl==1.18.3
+zipp==4.1.0

@@ -1,0 +1,37 @@
+From 56d676d545f15e5b03bacc234deded3742e39caf Mon Sep 17 00:00:00 2001
+From: Lusmse <lordmuze@gmail.com>
+Date: Sat, 10 Oct 2026 17:01:21 +0700
+Subject: [PATCH] datasets.utils.embed_images: skip the per-row map when
+ nothing needs embedding
+
+For video-only datasets embed_table_storage is a no-op, but the per-row
+datasets.map still re-encodes every feature: ~27 ms/row with the doorman
+teleop converter's ~100 extra features (49 of 70 s converting a 60 s
+episode). Skipping it when no feature requires storage embedding gives
+identical parquet and video output (verified byte-for-byte) in 19.6 s.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/lerobot/datasets/utils.py | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/lerobot/datasets/utils.py b/src/lerobot/datasets/utils.py
+index 37d8432b..31ed9b16 100644
+--- a/src/lerobot/datasets/utils.py
++++ b/src/lerobot/datasets/utils.py
+@@ -231,6 +231,12 @@ def embed_images(dataset: datasets.Dataset) -> datasets.Dataset:
+     Returns:
+         datasets.Dataset: The dataset with images embedded in the table storage.
+     """
++    # doorman fork: nothing to embed (video-only datasets) -> skip the per-row map, which is a no-op here but
++    # costs ~27 ms/row with ~100 extra features (measured on the teleop converter, 2026-10-10)
++    from datasets.features.features import require_storage_embed
++
++    if not any(require_storage_embed(ft) for ft in dataset.features.values()):
++        return dataset
+     # Embed image bytes into the table before saving to parquet
+     format = dataset.format
+     dataset = dataset.with_format("arrow")
+-- 
+2.34.1
+
