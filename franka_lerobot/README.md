@@ -38,6 +38,11 @@ unchanged on this branch.
 | `scripts/train_act.sh` | training: presets `c100`, `simtele24`, `custom`; resume |
 | `scripts/eval_heldout.py` | offline open-loop eval on the held-out real episodes (copied from JELLO_ARM_FRANKA `sim-stack`) |
 | `scripts/push_model_to_hub.py` | uploads a `pretrained_model` dir and a generated model card to the Hub |
+| `scripts/train_weighted.py` | stock `lerobot-train` plus a per-frame weighted co-training sampler (`--alpha-sim`) |
+| `scripts/train_weighted.sh` | launcher for it: `train_weighted.sh <preset> <alpha_sim>` (b40 hyperparameters) |
+| `scripts/queue_weighted.sh` | runs a file of `<preset> <alpha_sim>` lines one after the other |
+| `mappings/*.json` | slot -> source maps (real / sim / mimic per dataset episode) of the co-training datasets |
+| `tests/test_weighted_sampler.py` | CPU tests of the sampler on the 4 local datasets |
 
 ## 1. Environment (from scratch)
 
@@ -161,6 +166,46 @@ RESUME=1 STEPS=150000 franka_lerobot/scripts/train_act.sh c100    # train longer
 
 This runs `lerobot-train --resume=true --config_path=<out>/checkpoints/last/pretrained_model/train_config.json`.
 lerobot restores the model, optimizer, step and RNG from `checkpoints/last/training_state`.
+
+### Weighted co-training (`train_weighted.py`)
+
+Stock training draws frames uniformly from the merged dataset, so the sim share of a batch is simply the sim share of
+the frames (simtele24 0.635, real50_mimic47 0.661, real50_mimic176 0.879). `train_weighted.py` runs lerobot's own
+`train()` with one change, the DataLoader sampler: a seeded `WeightedRandomSampler` (with replacement, `len(dataset)`
+draws per "epoch") with per-frame weight `(1-ALPHA_SIM)/N_real` for real frames and `ALPHA_SIM/N_sim` for sim/mimic
+frames. The expected sim share of every batch is then `ALPHA_SIM`, and within one source every frame is equally likely
+(episodes are drawn in proportion to their length). The source of each episode comes from `mappings/<dataset>.json`
+(`slots[i].source`, `real` or `sim`/`mimic`); a real-only dataset needs no mapping. Episode boundaries come from
+`meta.episodes` (`dataset_from_index`/`dataset_to_index`) and are checked against `hf_dataset.episode_index`.
+
+Everything else is stock and identical to the b40 reference runs: `--dataset.episodes`, normalisation stats
+(`dataset.meta.stats` of the merged dataset, ImageNet stats for the cameras), and the hyperparameters (batch 40,
+100k steps, save every 8000). The hook monkeypatches `make_dataset`, the one training `DataLoader` construction and
+`cycle` in `lerobot.scripts.lerobot_train`; the lerobot install is not modified. Each run writes
+`<output_dir>/weighted_sampler.json` and logs the frames per source, the expected real/sim samples, a startup check
+of the realised sim fraction (400k draws) and, every 200 steps, the running realised sim fraction of the drawn indices.
+
+```bash
+conda activate franka_il            # CIR1: source ~/venvs/franka_il/bin/activate
+cd /path/to/JELLO_ARM_FRANKA         # outputs go to $PWD/outputs/train/act_cubes_<preset>_a<100*alpha>_b40
+DS_ROOT=~/data/cubes_20261014_30hz_real50_mimic47 /path/to/act/franka_lerobot/scripts/train_weighted.sh real50_mimic47 0.2
+DRY_RUN=1 ... train_weighted.sh real50_mimic47 0.2      # 200 steps, no wandb, output <out>_dryrun
+RESUME=1  ... train_weighted.sh real50_mimic47 0.2      # continue from <out>/checkpoints/last
+# a queue: lines "<preset> <alpha>", re-read before each run (delete a line to drop it), next starts on exit 0
+nohup /path/to/act/franka_lerobot/scripts/queue_weighted.sh my_queue.txt > my_queue.txt.log 2>&1 &
+```
+
+Options of `train_weighted.py` (all other arguments go to lerobot unchanged): `--alpha-sim`, `--slot-mapping`,
+`--sampler-seed` (default: `--seed`, 1000; on resume seed + step), `--exclude-episodes` (weight 0; OFF by default,
+see below), `--startup-check-batches`. Tests (CPU, about 3 minutes):
+`HF_HUB_OFFLINE=1 python -m pytest -q -s franka_lerobot/tests/test_weighted_sampler.py`.
+
+**Known lerobot 0.4.1 episode-filter leak.** `--dataset.episodes=[...]` does not remove the other episodes:
+`hf_dataset` keeps all of them, `len(dataset)` is the total frame count (66,930 for `cubes_20261014_30hz`, with
+`num_episodes` = 47), and the stock sampler draws from `range(len(dataset))`. So every run so far, including
+`act_cubes_c100`, also trained on the "held-out" episodes 10/25/40, and the held-out L1 above is not a true held-out
+number. In the weighted runs these frames stay in the real pool, **kept identical to c100 for comparability (known
+0.4.1 episode-filter leak)**. `--exclude-episodes 10 25 40` gives them weight 0 for a leak-free run.
 
 ## 4. Held-out evaluation
 
