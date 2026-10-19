@@ -2,7 +2,8 @@
 # Weighted co-training run (lerobot 0.4.1 ACT): stock lerobot-train + the per-frame sampler of train_weighted.py.
 #
 #   franka_lerobot/scripts/train_weighted.sh <preset> <alpha_sim>
-#     preset: simtele24 | real50_mimic47 | real50_mimic176 | c100 (real only; alpha must be 0)
+#     preset: simtele24 | real50_mimic47 | real50_mimic176 | real50_mimic376 | c100 (real only; alpha must be 0)
+#     real50_mimic376: nothing held out (--dataset.episodes = all 426)
 #   e.g.  WANDB=true DS_ROOT=~/data/cubes_20261014_30hz_real50_mimic47 franka_lerobot/scripts/train_weighted.sh real50_mimic47 0.2
 #         -> $OUT_ROOT/act_cubes_real50_mimic47_a020_b40
 #
@@ -18,7 +19,7 @@
 # "--exclude-episodes 10 25 40"). If DS_ROOT does not exist and the preset has a Hub copy, it is downloaded there.
 set -euo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-PRESET=${1:?usage: $0 <simtele24|real50_mimic47|real50_mimic176|c100> <alpha_sim>}
+PRESET=${1:?usage: $0 <simtele24|real50_mimic47|real50_mimic176|real50_mimic376|c100> <alpha_sim>}
 ALPHA=${2:?usage: $0 <preset> <alpha_sim>}
 PY=${PY:-python}
 DATA_ROOT=${DATA_ROOT:-$HOME/bc_data/lerobot/franka}
@@ -28,8 +29,11 @@ case "$PRESET" in
   real50_mimic47)  NAME=cubes_20261014_30hz_real50_mimic47;  N_EP=97;  MAP=real50_mimic47_mapping.json;  HUB= ;;
   real50_mimic176) NAME=cubes_20261014_30hz_real50_mimic176; N_EP=226; MAP=real50_mimic176_mapping.json; HUB= ;;
   c100)            NAME=cubes_20261014_30hz;                 N_EP=50;  MAP=;                             HUB= ;;
+  real50_mimic376) NAME=cubes_20261014_30hz_real50_mimic376; N_EP=426; MAP=real50_mimic376_mapping.json; HUB=Lusmse/franka_cubes_20261014_30hz_real50_mimic376
+                   HELDOUT="-1" ;;  # all 50 real trained on (user 2026-10-19: robot eval is the test) + 376 mimic
   *) echo "unknown preset $PRESET" >&2; exit 2 ;;
 esac
+HELDOUT=${HELDOUT:-10,25,40}  # dataset indices left out of --dataset.episodes (all presets but real50_mimic376: 10,25,40; -1 = none)
 DS_ROOT=${DS_ROOT:-$DATA_ROOT/$NAME}
 TAG=$($PY -c "a=float('$ALPHA'); assert 0<=a<=1, a; print('a%03d' % round(a*100))")
 JOB_NAME=${JOB_NAME:-act_cubes_${PRESET}_${TAG}_b40}
@@ -59,7 +63,7 @@ if [ "${RESUME:-0}" = 1 ]; then
   exec $PY "$HERE/train_weighted.py" "${OWN[@]}" --resume=true --config_path="$CFG" --steps="$STEPS"
 fi
 
-TRAIN_EPS=$($PY -c "print('['+','.join(str(i) for i in range($N_EP) if i not in (10,25,40))+']')")
+TRAIN_EPS=$($PY -c "print('['+','.join(str(i) for i in range($N_EP) if i not in ($HELDOUT,))+']')")
 echo "=== train $(date)  preset=$PRESET alpha_sim=$ALPHA  ds=$DS_ROOT  out=$OUT_DIR  git=$(git -C "$HERE" rev-parse --short HEAD 2>/dev/null)"
 $PY "$HERE/train_weighted.py" "${OWN[@]}" \
   --dataset.repo_id=franka/$NAME --dataset.root="$DS_ROOT" --dataset.episodes="$TRAIN_EPS" \
