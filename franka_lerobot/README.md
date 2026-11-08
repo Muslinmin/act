@@ -41,6 +41,9 @@ unchanged on this branch.
 | `scripts/train_weighted.py` | stock `lerobot-train` plus a per-frame weighted co-training sampler (`--alpha-sim`) |
 | `scripts/train_weighted.sh` | launcher for it: `train_weighted.sh <preset> <alpha_sim>` (b40 hyperparameters) |
 | `scripts/queue_weighted.sh` | runs a file of `<preset> <alpha_sim>` lines one after the other |
+| `scripts/make_cells.py` | writes the co-training paper cells (exclude lists over `real50_mimic376`) and their queue file |
+| `scripts/queue_cells.sh` | runs such a cells queue one after the other (100k steps, only the 100k checkpoint saved) |
+| `queues/cotrain_v1/` | the paper cells: `cells.txt` (queue), `cells.json` (kept slots per cell), `excl_<cell>.txt` |
 | `mappings/*.json` | slot -> source maps (real / sim / mimic per dataset episode) of the co-training datasets |
 | `tests/test_weighted_sampler.py` | CPU tests of the sampler on the 4 local datasets |
 
@@ -206,6 +209,24 @@ see below), `--startup-check-batches`. Tests (CPU, about 3 minutes):
 `act_cubes_c100`, also trained on the "held-out" episodes 10/25/40, and the held-out L1 above is not a true held-out
 number. In the weighted runs these frames stay in the real pool, **kept identical to c100 for comparability (known
 0.4.1 episode-filter leak)**. `--exclude-episodes 10 25 40` gives them weight 0 for a leak-free run.
+
+### Co-training paper cells (`make_cells.py`, `queue_cells.sh`)
+
+All cells train on the 426-slot `real50_mimic376` dataset and differ only in `--exclude-episodes` (weight 0) and
+`ALPHA_SIM`: the alpha sweep at 350 sim demos (`S350_a030` ... `S350_a100`), the sim-quantity sweep at alpha 0.9
+(`S050`/`S100`/`S200`/`S350`), real-only (`R50`, `R25` = every 2nd real episode) and sim-only (`*_a100`, no real).
+Sim subsets are the first N Mimic demos in coverage-checklist order (`cover_entry` in the mapping), so they are nested
+and every prefix is spread over the quadrants; the first 47 are the old mimic47 set.
+
+```bash
+python franka_lerobot/scripts/make_cells.py franka_lerobot/queues/cotrain_v1   # cells.txt, cells.json, excl_*.txt
+# line "<job> <alpha_sim> <exclude file>", re-read before each run; finished lines go to cells.txt.done,
+# a failed run stops the queue. 100k steps, SAVE_FREQ=100000 (only the final checkpoint, disk is tight).
+# Env: PY, OUT_ROOT, DS_ROOT, STEPS, SAVE_FREQ; START_AT="00:00" waits until that time.
+nohup franka_lerobot/scripts/queue_cells.sh franka_lerobot/queues/cotrain_v1 > franka_lerobot/queues/cotrain_v1/queue.log 2>&1 &
+```
+
+Per-run logs (`<job>.log`), `queue.log` and `cells.txt.done` are run state and are not committed.
 
 ## 4. Held-out evaluation
 
