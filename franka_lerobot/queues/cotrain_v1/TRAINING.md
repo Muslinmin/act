@@ -44,6 +44,7 @@ Do not edit them for this experiment.
 | `NUM_WORKERS` | 8 | data loading only. 16 was OOM-killed (RAM) on 9 Nov 2026; do not raise. |
 | `SAVE_FREQ` | 20000 | resume points; deleted after the run, only 100k kept (disk) |
 | `MAX_RETRY` | 3 | automatic resumes after a crash |
+| `WANDB` | true | logging only. **`WANDB=false` on CIR1** (no wandb login: lerobot 0.4.1 forces online mode and `WANDB_MODE=offline` does not override it). Loss stays in the run `.log`. |
 | Order in `cells.txt` | | reorder or `#` lines that have not started; re-read before each run |
 
 ## 3. Start or resume the queue
@@ -81,6 +82,11 @@ To free the GPU:
 Restarting the queue resumes from that checkpoint.
 
 ## 6. When a run finishes
+
+**On CIR1:** push the model to the Hub (private) as `Lusmse/act_franka_cot_<CELL>_b40`, path
+`checkpoint_100000/pretrained_model` (same layout as models 8 and 9). CIR2 downloads it and links it for the robot eval.
+
+**On CIR2** (robot eval kit):
 
 ```bash
 ln -sfn ~/jello/JELLO_ARM_FRANKA/outputs/train/act_cot_<CELL>_b40/checkpoints/100000/pretrained_model \
