@@ -19,12 +19,21 @@ assert len(real) == 50 and len(sim) == 376
 
 # (job name, alpha, n_real kept, n_sim kept), in training order
 CELLS = [
-    ("S350_a090", 0.9, 50, 350), ("R50", 0.0, 50, 0), ("S350_a050", 0.5, 50, 350), ("S350_a100", 1.0, 0, 350),
-    ("S350_a070", 0.7, 50, 350), ("S350_a095", 0.95, 50, 350), ("S350_a080", 0.8, 50, 350),
-    ("S350_a030", 0.3, 50, 350), ("S200_a090", 0.9, 50, 200), ("S100_a090", 0.9, 50, 100),
-    ("S050_a090", 0.9, 50, 50), ("R25", 0.0, 25, 0), ("S050_a100", 1.0, 0, 50), ("S200_a100", 1.0, 0, 200),
+    # done on CIR2 (models 8, 9)
+    ("S350_a090", 0.9, 50, 350), ("S350_a100", 1.0, 0, 350),
+    # tier 1: end points of each sweep
+    ("S350_a010", 0.1, 50, 350), ("S050_a090", 0.9, 50, 50), ("S050_a100", 1.0, 0, 50), ("R25", 0.0, 25, 0),
+    # tier 2: midpoints
+    ("S350_a050", 0.5, 50, 350), ("S200_a090", 0.9, 50, 200), ("S200_a100", 1.0, 0, 200),
+    # tier 3: curve shape + alpha x quantity interaction
+    ("S350_a095", 0.95, 50, 350), ("S350_a070", 0.7, 50, 350), ("S100_a090", 0.9, 50, 100),
     ("S050_a050", 0.5, 50, 50),
+    # tier 4: fill-in
+    ("S350_a030", 0.3, 50, 350), ("S350_a080", 0.8, 50, 350),
+    # not queued: real-only 50 = the older c100 model (batch 32, footnoted)
+    ("R50", 0.0, 50, 0),
 ]
+SKIP = {"R50": "skipped 2026-11-09 (owner: R50 already trained = model 4, c100)"}
 lines = []
 summary = {}
 for name, a, nr, ns in CELLS:
@@ -34,7 +43,8 @@ for name, a, nr, ns in CELLS:
     excl = sorted(set(range(len(slots))) - keep)
     (OUT / f"excl_{name}.txt").write_text(" ".join(map(str, excl)) + "\n")
     job = f"act_cot_{name}_b40"
-    lines.append(f"{job} {a} excl_{name}.txt")
+    line = f"{job} {a} excl_{name}.txt"
+    lines.append(f"# {SKIP[name]} {line}" if name in SKIP else line)
     summary[job] = {"alpha_sim": a, "n_real": nr, "n_sim": ns, "n_excluded": len(excl),
                     "kept_real_slots": keep_real, "kept_sim_slots": sim[:ns]}
 (OUT / "cells.txt").write_text("# <job> <alpha_sim> <exclude file>; delete or '#' a line that has not started to drop it\n"

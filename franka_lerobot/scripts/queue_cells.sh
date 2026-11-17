@@ -7,7 +7,10 @@ set -uo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 D=$(realpath "${1:?usage: $0 <cells dir>}"); Q=$D/cells.txt; DONE=$Q.done; touch "$DONE"
 export PY=${PY:-/home/cir/miniconda3/envs/franka_il/bin/python}
-export STEPS=${STEPS:-100000} SAVE_FREQ=${SAVE_FREQ:-100000}
+export STEPS=${STEPS:-100000} SAVE_FREQ=${SAVE_FREQ:-20000} NUM_WORKERS=${NUM_WORKERS:-8}
+# disk: intermediate checkpoints (every 20k, for resume after a crash) are deleted once the run ends; only 100k stays.
+# RAM: 8 dataloader workers (16 held ~17 GB shared memory and got OOM-killed on 9 Nov). A failed run is resumed
+# from its last checkpoint up to MAX_RETRY times before the queue stops.
 export OUT_ROOT=${OUT_ROOT:-/home/cir/jello/JELLO_ARM_FRANKA/outputs/train}
 export DS_ROOT=${DS_ROOT:-/home/cir/bc_data/lerobot/franka/cubes_20261014_30hz_real50_mimic376}
 if [ -n "${START_AT:-}" ]; then
@@ -19,9 +22,22 @@ while true; do
   [ -z "$NEXT" ] && { echo "=== queue empty $(date)"; exit 0; }
   read -r JOB ALPHA EXF <<< "$NEXT"
   echo "=== start $JOB alpha=$ALPHA excl=$EXF $(date)  df $(df -h --output=avail /home | tail -1)"
-  JOB_NAME=$JOB EXTRA="--exclude-episodes $(cat "$D/$EXF")" bash "$HERE/train_weighted.sh" real50_mimic376 "$ALPHA" \
-    > "$D/$JOB.log" 2>&1
+  R0=0; [ -e "$OUT_ROOT/$JOB/checkpoints/last" ] && { R0=1; echo "=== $JOB has $(readlink "$OUT_ROOT/$JOB/checkpoints/last"): resuming"; }
+  RESUME=$R0 JOB_NAME=$JOB EXTRA="--exclude-episodes $(cat "$D/$EXF")" bash "$HERE/train_weighted.sh" real50_mimic376 "$ALPHA" \
+    >> "$D/$JOB.log" 2>&1
   RC=$?
+  TRY=0
+  while [ $RC -ne 0 ] && [ $TRY -lt "${MAX_RETRY:-3}" ] && [ -e "$OUT_ROOT/$JOB/checkpoints/last" ]; do
+    TRY=$((TRY+1)); echo "=== $JOB rc=$RC, resume try $TRY from $(readlink "$OUT_ROOT/$JOB/checkpoints/last") $(date)"
+    sleep 60
+    RESUME=1 JOB_NAME=$JOB EXTRA="--exclude-episodes $(cat "$D/$EXF")" bash "$HERE/train_weighted.sh" real50_mimic376 "$ALPHA" \
+      >> "$D/$JOB.log" 2>&1
+    RC=$?
+  done
+  if [ $RC -eq 0 ]; then
+    for c in "$OUT_ROOT/$JOB"/checkpoints/[0-9]*; do [ "$(basename "$c")" = "$(printf '%06d' "$STEPS")" ] || rm -rf "$c"; done
+    ln -sfn "$(printf '%06d' "$STEPS")" "$OUT_ROOT/$JOB/checkpoints/last"
+  fi
   echo "=== end $JOB rc=$RC $(date)"
   [ $RC -ne 0 ] && { echo "=== queue stopped: $JOB failed"; exit $RC; }
   echo "$NEXT" >> "$DONE"

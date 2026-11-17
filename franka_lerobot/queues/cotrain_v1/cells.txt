@@ -1,16 +1,17 @@
 # <job> <alpha_sim> <exclude file>; delete or '#' a line that has not started to drop it
 act_cot_S350_a090_b40 0.9 excl_S350_a090.txt
-act_cot_R50_b40 0.0 excl_R50.txt
-act_cot_S350_a050_b40 0.5 excl_S350_a050.txt
 act_cot_S350_a100_b40 1.0 excl_S350_a100.txt
-act_cot_S350_a070_b40 0.7 excl_S350_a070.txt
-act_cot_S350_a095_b40 0.95 excl_S350_a095.txt
-act_cot_S350_a080_b40 0.8 excl_S350_a080.txt
-act_cot_S350_a030_b40 0.3 excl_S350_a030.txt
-act_cot_S200_a090_b40 0.9 excl_S200_a090.txt
-act_cot_S100_a090_b40 0.9 excl_S100_a090.txt
+act_cot_S350_a010_b40 0.1 excl_S350_a010.txt
 act_cot_S050_a090_b40 0.9 excl_S050_a090.txt
-act_cot_R25_b40 0.0 excl_R25.txt
 act_cot_S050_a100_b40 1.0 excl_S050_a100.txt
+act_cot_R25_b40 0.0 excl_R25.txt
+act_cot_S350_a050_b40 0.5 excl_S350_a050.txt
+act_cot_S200_a090_b40 0.9 excl_S200_a090.txt
 act_cot_S200_a100_b40 1.0 excl_S200_a100.txt
+act_cot_S350_a095_b40 0.95 excl_S350_a095.txt
+act_cot_S350_a070_b40 0.7 excl_S350_a070.txt
+act_cot_S100_a090_b40 0.9 excl_S100_a090.txt
 act_cot_S050_a050_b40 0.5 excl_S050_a050.txt
+act_cot_S350_a030_b40 0.3 excl_S350_a030.txt
+act_cot_S350_a080_b40 0.8 excl_S350_a080.txt
+# skipped 2026-11-09 (owner: R50 already trained = model 4, c100) act_cot_R50_b40 0.0 excl_R50.txt

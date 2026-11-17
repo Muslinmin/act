@@ -1,0 +1,4 @@
+# queue run state (per machine), not source
+*.log
+cells.txt.done
+*.bak*
